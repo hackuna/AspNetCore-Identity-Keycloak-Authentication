@@ -1,0 +1,13 @@
+﻿services:
+  mvcapplication:
+    image: mvcapplication
+    ports:
+      - "5000:8080"
+    environment:
+      - "KEYCLOAK_BASE_ADDRESS=${KEYCLOAK_BASE_ADDRESS}"
+      - "KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}"
+      - "KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}"
+      - "KEYCLOAK_REALM=${KEYCLOAK_REALM}"
+    build:
+      context: .
+      dockerfile: MvcApplication/Dockerfile

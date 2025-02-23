@@ -1,13 +1,69 @@
-﻿services:
+﻿volumes:
+  postgres:
+
+services:
+
+  postgres:
+    image: postgres:${POSTGRES_RELEASE}
+    container_name: ${POSTGRES_HOST}
+    hostname: ${POSTGRES_HOST}
+    restart: unless-stopped
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_RELEASE}
+    container_name: ${KEYCLOAK_HOST}
+    hostname: ${KEYCLOAK_HOST}
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+      - "${KEYCLOAK_METRICS_PORT}:9000"
+    restart: always
+    command: start --features=token-exchange
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
+    environment:
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT_BACKCHANNEL: false
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HEALTH_ENABLED: true
+      KC_METRICS_ENABLED: true
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JAVA_OPTS_KC_HEAP: "-XX:MaxHeapFreeRatio=40 -XX:MaxRAMPercentage=65"
+    depends_on:
+      - postgres
+    links:
+      - postgres
+
   mvcapplication:
     image: mvcapplication
+    container_name: ${APP_HOST}
+    hostname: ${APP_HOST}
     ports:
-      - "5000:8080"
+      - "${APP_PORT}:8080"
     environment:
-      - "KEYCLOAK_BASE_ADDRESS=${KEYCLOAK_BASE_ADDRESS}"
-      - "KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}"
-      - "KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}"
-      - "KEYCLOAK_REALM=${KEYCLOAK_REALM}"
+      KEYCLOAK_BASE_ADDRESS: http://localhost:${KEYCLOAK_PORT}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+    depends_on:
+      - keycloak
+    links:
+      - keycloak
     build:
       context: .
       dockerfile: MvcApplication/Dockerfile
